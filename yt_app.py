@@ -5,18 +5,23 @@ from sentence_transformers import SentenceTransformer
 
 st.write("hello")
 
-pinecone.init(
-    api_key="071d15be-9309-41fc-a16e-c3d7b2b0ddfb",  # app.pinecone.io
-    environment="us-west1-gcp"
-)
-index = pinecone.Index("youtube-search")
-model = SentenceTransformer('multi-qa-mpnet-base-dot-v1')
+@st.experimental_singleton
+def init_pinecone():
+    pinecone.init(api_key="071d15be-9309-41fc-a16e-c3d7b2b0ddfb", environment="us-west1-gcp")
+    return pinecone.Index('youtube-search')
+    
+@st.experimental_singleton
+def init_retriever():
+    return SentenceTransformer('multi-qa-mpnet-base-dot-v1')
+
+index = init_pinecone()
+model = init_retriever()
 
 def card(title, url, context, start):
     url1 = url.split("=")[-1]
     start1 = "{:.0f}".format(start)
     url_final = (f"https://youtu.be/{url1}?t={start1}")
-    print(url_final)
+    # print(url_final)
     return st.markdown(f"""
     <div class="container-fluid">
         <div class="row align-items-start">
