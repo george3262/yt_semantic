@@ -1,3 +1,4 @@
+from tracemalloc import start
 import streamlit as st
 import pinecone
 from sentence_transformers import SentenceTransformer
@@ -11,12 +12,16 @@ pinecone.init(
 index = pinecone.Index("youtube-search")
 model = SentenceTransformer('multi-qa-mpnet-base-dot-v1')
 
-def card(title, url, context):
+def card(title, url, context, start):
+    url1 = url.split("=")[-1]
+    start1 = "{:.0f}".format(start)
+    url_final = (f"https://youtu.be/{url1}?t={start1}")
+    print(url_final)
     return st.markdown(f"""
     <div class="container-fluid">
         <div class="row align-items-start">
              <div  class="col-md-8 col-sm-8">
-                 <a href={url}>{title}</a>
+                 <a href={url_final}>{title}</a>
                  <br>
                  <span style="color: #808080;">
                      <small>{context[:200].capitalize()+"...."}</small>
@@ -40,12 +45,13 @@ query = st.text_input("Search!", "")
 
 if query != "":
     xq = model.encode(query).tolist()
-    xc = index.query(xq, top_k=20, include_metadata=True)
+    xc = index.query(xq, top_k=10, include_metadata=True)
     
     for context in xc['matches']:
         card(
             # context['metadata']['thumbnail'],
             context['metadata']['title'],
             context['metadata']['url'],
-            context['metadata']['text']
-        )
+            context['metadata']['text'],
+            context['metadata']['start']
+        ) 
