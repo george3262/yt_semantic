@@ -1,14 +1,14 @@
-from tracemalloc import start
+from curses import meta
+from unittest import result
 import streamlit as st
 import pinecone
 from sentence_transformers import SentenceTransformer
-
-st.write("hello")
+import pandas as pd
 
 @st.experimental_singleton
 def init_pinecone():
     pinecone.init(api_key="071d15be-9309-41fc-a16e-c3d7b2b0ddfb", environment="us-west1-gcp")
-    return pinecone.Index('youtube-search')
+    return pinecone.Index('ytbc2')
     
 @st.experimental_singleton
 def init_retriever():
@@ -17,28 +17,32 @@ def init_retriever():
 index = init_pinecone()
 model = init_retriever()
 
-def card(title, url, context, start):
+def card(thumbnail, title, url, context, start, score, published):
     url1 = url.split("=")[-1]
     start1 = "{:.0f}".format(start)
     url_final = (f"https://youtu.be/{url1}?t={start1}")
     return st.markdown(f"""
     <div class="container-fluid">
         <div class="row align-items-start">
+            <div class="col-md-4 col-sm-4">
+                 <div class="position-relative">
+                     <a href={url}><img src={thumbnail} class="img-fluid" style="width: 192px; height: 106px"></a>
+                 </div>
+             </div>
              <div  class="col-md-8 col-sm-8">
                  <a href={url_final}>{title}</a>
                  <br>
-                 <span style="color: #808080;">
-                     <small>{context[:200].capitalize()+"...."}</small>
+                 <span style="color: white;">
+                     <small>{context[:200].capitalize()+"...."} {published}</small>
                  </span>
              </div>
         </div>
      </div>
+     <br>
         """, unsafe_allow_html=True)
 
-    
 st.write("""
-# YouTube Q&A
-Ask me a question!
+Ask Bonnie a question
 """)
 
 st.markdown("""
@@ -47,15 +51,35 @@ st.markdown("""
 
 query = st.text_input("Search!", "")
 
+values = st.slider(
+    'Select number of results',
+    1, 50)
+
 if query != "":
     xq = model.encode(query).tolist()
-    xc = index.query(xq, top_k=10, include_metadata=True)
-    
+    xc = index.query(xq, top_k=values, include_metadata=True)
+
+    results = []
     for context in xc['matches']:
-        card(
-            # context['metadata']['thumbnail'],
-            context['metadata']['title'],
-            context['metadata']['url'],
-            context['metadata']['text'],
-            context['metadata']['start']
+        check = {
+            "thumbnail": context['metadata']['thumbnail'],
+            "title": context['metadata']['title'],
+            "url": context['metadata']['url'],
+            "text": context['metadata']['text'],
+            "start": context['metadata']['start'],
+            "score": context['score'],
+            "published": context['metadata']['published']
+        }
+        results.append(check)
+    df = pd.DataFrame(results).sort_values(by='published', ascending=True)
+
+    for index, row in df.iterrows():
+            card(
+            row['thumbnail'],
+            row['title'],
+            row['url'],
+            row['text'],
+            row['start'],
+            row['score'],
+            row['published']
         ) 
